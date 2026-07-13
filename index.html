@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KingShot Formation Calculator</title>
+<style>
+:root {
+  --bg:#1a1a2e; --card:#16213e; --accent:#0f3460; --gold:#e6c519;
+  --inf:#4e8df5; --cav:#4ef56f; --arch:#f56f4e; --text:#eee;
+  --muted:#8899aa; --border:#2a2a4a; --ai-bg:#0d1b2a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:12px;}
+h1{text-align:center;font-size:1.4rem;color:var(--gold);margin:8px 0 4px;text-shadow:0 0 12px rgba(230,197,25,.3);}
+.subtitle{text-align:center;color:var(--muted);font-size:.8rem;margin-bottom:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;max-width:700px;margin-left:auto;margin-right:auto;}
+.card h2{font-size:1rem;margin-bottom:12px;color:var(--gold);}
+.troop-list{display:flex;flex-direction:column;gap:6px;}
+.troop-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:6px;align-items:center;}
+.troop-row select,.troop-row input{background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 8px;font-size:.85rem;width:100%;}
+.btn-remove{background:#c0392b;border:none;border-radius:6px;color:#fff;width:30px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;}
+.btn-remove:hover{background:#e74c3c;}
+.btn-add{background:var(--accent);border:1px dashed var(--muted);border-radius:6px;color:var(--muted);padding:8px;width:100%;cursor:pointer;margin-top:6px;font-size:.85rem;}
+.btn-add:hover{border-color:var(--gold);color:var(--gold);}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.summary-box{border-radius:10px;padding:12px;text-align:center;border:2px solid transparent;}
+.summary-box.inf{background:rgba(78,141,245,.12);border-color:var(--inf);}
+.summary-box.cav{background:rgba(78,245,111,.12);border-color:var(--cav);}
+.summary-box.arch{background:rgba(245,111,78,.12);border-color:var(--arch);}
+.summary-box .type-label{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;opacity:.7;}
+.summary-box .count{font-size:1.4rem;font-weight:bold;margin:4px 0;}
+.summary-box .pct{font-size:.85rem;opacity:.8;}
+.capacity-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.capacity-row label{font-size:.85rem;white-space:nowrap;}
+.capacity-row input{flex:1;background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;text-align:right;font-size:1rem;}
+.scenario-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.scenario-row label{font-size:.85rem;white-space:nowrap;}
+.scenario-row select{flex:1;background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:.85rem;}
+.hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.hero-row label{font-size:.85rem;white-space:nowrap;}
+.hero-row select{flex:1;background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:.85rem;}
+.btn-analyze{background:var(--gold);color:#1a1a2e;border:none;border-radius:8px;padding:12px;width:100%;font-size:1rem;font-weight:bold;cursor:pointer;margin-top:10px;}
+.btn-analyze:hover{background:#f0d020;}
+.btn-analyze:disabled{opacity:.5;cursor:wait;}
+.ai-response{background:var(--ai-bg);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:10px;white-space:pre-wrap;font-size:.88rem;line-height:1.6;display:none;}
+.ai-response.show{display:block;}
+.ai-loading{color:var(--gold);text-align:center;padding:20px;}
+.ai-error{color:#e74c3c;}
+.ai-model{font-size:.7rem;color:var(--muted);margin-top:8px;text-align:right;}
+.footer{text-align:center;color:var(--muted);font-size:.7rem;padding:10px 0;}
+</style>
+</head>
+<body>
+<h1>⚔️ KingShot Formation Calculator</h1>
+<p class="subtitle">AI-powered — Enter your troops, get a smart formation analysis</p>
+
+<div class="card">
+  <h2>📋 Your Troops</h2>
+  <div class="troop-list" id="troopList"></div>
+  <button class="btn-add" onclick="addRow()">＋ Add Troop Line</button>
+</div>
+
+<div class="card">
+  <h2>🎯 March Setup</h2>
+  <div class="scenario-row">
+    <label>Scenario:</label>
+    <select id="scenario">
+      <option>Rebel Bounty: Rare (Open Field 50/20/30)</option>
+      <option>Rebel Bounty: Epic (Open Field 50/20/30)</option>
+      <option>General Rally (50/20/30)</option>
+      <option>Alliance Championship (50/20/30)</option>
+      <option>vs Heavy Cavalry Enemy (60/20/20)</option>
+      <option>Garrison Defense (70/30/0 — no archers)</option>
+      <option>City Defense (60/20/20)</option>
+      <option>Bear Hunt (10/10/80 — max archers)</option>
+      <option>Counter Archer-Heavy Enemy (30/50/20)</option>
+      <option>Castle Battle Attack (50/20/30)</option>
+      <option>Castle Battle Defense (60/20/20)</option>
+      <option>Open Field (50/20/30)</option>
+    </select>
+  </div>
+  <div class="hero-row" style="flex-wrap:wrap">
+    <label>🦸 Hero Slot 1 (Infantry):</label>
+    <select id="hero1">
+      <option value="">None</option>
+      <option value="Helga">Helga — Lethality & Defense (Garrison lead)</option>
+      <option value="Eric">Eric — Health & Defense</option>
+      <option value="Alcar">Alcar — Damage & Infantry Defense</option>
+      <option value="Gordon">Gordon — Health (joiner)</option>
+      <option value="Saul">Saul — Defense & Health</option>
+      <option value="Howard">Howard — Defensive only</option>
+      <option value="Fahd">Fahd — Defensive only</option>
+      <option value="Quinn">Quinn — Defensive only</option>
+    </select>
+  </div>
+  <div class="hero-row">
+    <label>🦸 Hero Slot 2 (Cavalry):</label>
+    <select id="hero2">
+      <option value="">None</option>
+      <option value="Jabel">Jabel — Bear Hunt leader (chance-based)</option>
+      <option value="Jaeger">Jaeger — Capacity (Lv3 skill skippable)</option>
+      <option value="Marlin">Marlin — Chance-based</option>
+      <option value="Petra">Petra — Chance-based</option>
+      <option value="Rosa">Rosa — Chance-based</option>
+      <option value="Diana">Diana — Niche (rallying terrors only)</option>
+      <option value="Thrud">Thrud — Archer damage boost</option>
+      <option value="Hilde">Hilde — Defense + Lethality (joiner)</option>
+    </select>
+  </div>
+  <div class="hero-row">
+    <label>🦸 Hero Slot 3 (Archer):</label>
+    <select id="hero3">
+      <option value="">None</option>
+      <option value="Chenko">Chenko — Lethality (ratio: 1/10/89)</option>
+      <option value="Yeonwoo">Yeonwoo — Lethality (ratio or quantity)</option>
+      <option value="Amane">Amane — Attack (quantity mode)</option>
+      <option value="Margot">Margot — Attack</option>
+      <option value="Amadeus">Amadeus — Bear Hunt joiner</option>
+      <option value="Valora">Master Valora — Savage Advantage (+3K-30K march)</option>
+      <option value="Zoe">Zoe — No damage (defensive)</option>
+      <option value="Seth">Seth — Other</option>
+      <option value="Forrest">Forrest — Other</option>
+      <option value="Edwin">Edwin — Other</option>
+      <option value="Olive">Olive — Other</option>
+    </select>
+  </div>
+  <div class="capacity-row">
+    <label>March Capacity:</label>
+    <input type="number" id="capacity" value="0" min="0" placeholder="e.g. 250000" oninput="calculate()">
+  </div>
+  <div class="summary-grid">
+    <div class="summary-box inf"><div class="type-label">Infantry</div><div class="count" id="sumInf">0</div><div class="pct" id="pctInf">0%</div></div>
+    <div class="summary-box cav"><div class="type-label">Cavalry</div><div class="count" id="sumCav">0</div><div class="pct" id="pctCav">0%</div></div>
+    <div class="summary-box arch"><div class="type-label">Archers</div><div class="count" id="sumArch">0</div><div class="pct" id="pctArch">0%</div></div>
+  </div>
+  <button class="btn-analyze" id="btnAnalyze" onclick="analyze()">🧠 Analyze Formation</button>
+</div>
+
+<div class="card">
+  <h2>🤖 AI Formation Analysis</h2>
+  <div style="margin-bottom:10px;">
+    <details>
+      <summary style="font-size:.8rem;color:var(--muted);cursor:pointer;">⚙️ API Key Settings</summary>
+      <div style="margin-top:8px;">
+        <label style="font-size:.8rem;color:var(--muted);">OpenRouter API Key:</label>
+        <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." style="width:100%;background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;margin-top:4px;font-size:.85rem;" onblur="saveKey()">
+        <button onclick="saveKey()" style="margin-top:4px;background:var(--accent);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 12px;font-size:.8rem;cursor:pointer;">Save Key</button>
+        <p style="font-size:.7rem;color:var(--muted);margin-top:4px;">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--gold);">openrouter.ai/keys</a>. Stored locally in your browser only.</p>
+      </div>
+    </details>
+  </div>
+  <div class="ai-response" id="aiResponse"></div>
+</div>
+
+<div class="footer">KingShot Formation Calculator · AI via OpenRouter · <a href='https://github.com/Blueyes772/kingshot-formation-calculator' style='color:var(--muted);'>GitHub</a></div>
+
+<script>
+const tierPresets = {
+  infantry: ['Level VIII Infantry','Level VII Infantry','Level VI Infantry','Level V Infantry','Level IV Infantry','Level III Infantry','Level II Infantry','Level I Infantry'],
+  cavalry: ['Level VIII Cavalry','Level VII Cavalry','Level VI Cavalry','Level V Cavalry','Level IV Cavalry','Level III Cavalry','Level II Cavalry','Level I Cavalry'],
+  archer: ['Level VIII Archer','Level VII Archer','Level VI Archer','Level V Archer','Level IV Archer','Level III Archer','Level II Archer','Level I Archer']
+};
+let rows = [];
+
+function addRow(type,name,count) {
+  const id = Date.now()+Math.random();
+  rows.push({id, type:type||'infantry', name:name||'', count:count||''});
+  renderRows(); calculate();
+}
+function removeRow(id) { rows=rows.filter(r=>r.id!==id); renderRows(); calculate(); }
+function updateRow(id,field,val) {
+  const r=rows.find(r=>r.id===id);
+  if(r) {
+    r[field]=val;
+    if(field==='type') { r.name=''; renderRows(); }
+    calculate();
+  }
+}
+
+function renderRows() {
+  const list=document.getElementById('troopList'); list.innerHTML='';
+  rows.forEach(r=>{
+    const row=document.createElement('div'); row.className='troop-row';
+    row.innerHTML=
+      `<select onchange="updateRow(${r.id},'type',this.value)">
+        <option value="infantry" ${r.type==='infantry'?'selected':''}>🛡️ Infantry</option>
+        <option value="cavalry" ${r.type==='cavalry'?'selected':''}>🐴 Cavalry</option>
+        <option value="archer" ${r.type==='archer'?'selected':''}>🏹 Archer</option>
+      </select>
+      <select onchange="updateRow(${r.id},'name',this.value)">
+        <option value="">Select level...</option>
+        ${tierPresets[r.type].map(t=>`<option value="${t}" ${r.name===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input type="number" value="${r.count}" min="0" placeholder="Count" onchange="updateRow(${r.id},'count',this.value)" style="text-align:right">
+      <button class="btn-remove" onclick="removeRow(${r.id})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function fmt(n) { return n.toLocaleString('en-US'); }
+
+function calculate() {
+  let sums={infantry:0,cavalry:0,archer:0};
+  rows.forEach(r=>{ sums[r.type]+=(parseInt(r.count)||0); });
+  const total=sums.infantry+sums.cavalry+sums.archer;
+  document.getElementById('sumInf').textContent=fmt(sums.infantry);
+  document.getElementById('sumCav').textContent=fmt(sums.cavalry);
+  document.getElementById('sumArch').textContent=fmt(sums.archer);
+  const pct=n=>total>0?((n/total)*100).toFixed(1)+'%':'0%';
+  document.getElementById('pctInf').textContent=pct(sums.infantry);
+  document.getElementById('pctCav').textContent=pct(sums.cavalry);
+  document.getElementById('pctArch').textContent=pct(sums.archer);
+}
+
+const OR_KEY='';
+  function saveKey(){const v=document.getElementById('apiKeyInput').value.trim();if(v){localStorage.setItem('ks_or_key',v);alert('API key saved!');}}
+  function getKey(){return localStorage.getItem('ks_or_key')||'';}
+const OR_URL="https://openrouter.ai/api/v1/chat/completions";
+const MODELS=["deepseek/deepseek-chat","openai/gpt-oss-20b:free"];
+const HERO_DATA=`KNOWN KINGSOT HEROES:
+INFANTRY: Helga(Leth+Def,garrison lead), Eric(HP+Def), Alcar(Dmg+Inf Def), Gordon(HP joiner), Saul(Def+HP), Howard/Fahd/Quinn(defensive only).
+CAVALRY: Jabel(bear hunt lead,chance-based), Jaeger(capacity,Lv3 skippable), Thrud(archer dmg boost), Hilde(Def+Leth), Marlin/Petra/Rosa(chance-based), Diana(niche).
+ARCHER: Chenko(Leth,ratio 1/10/89,top joiner), Yeonwoo(Leth,ratio or quantity), Amane(Atk,quantity), Margot(Atk), Amadeus(bear joiner), Valora(Savage Advantage +3K-30K march), Zoe(defensive).
+TIER LIST: Top=Yeonwoo,Chenko,Margot,Amane. Avoid=Rosa,Marlin,Petra,Jaeger,Jabel(chance-based). NoDmg=Zoe,Saul,Alcar,Eric. Defensive=Quinn,Howard,Gordon,Fahd.
+DAMAGE: Same heroes additive(4xAmane=2.0x). Mixed families multiplicative(Chenko+Amane+Margot+Yeonwoo=2.5x). Lethality=Chenko,Yeonwoo. Attack=Amane,Margot. Mix both=max damage.
+RULES: Only 4 joiner skills count. Stars don't affect capacity. First slot hero skill applies to whole rally. Send Chenko first if <4 in rally.
+COMBAT: Inf beats Cav > Cav beats Arch > Arch beats Inf. Attack order: Inf→Cav→Arch each round. Inf=meat shield. Cav=bypass chance to hit archers. Arch=highest lethality.
+FORMATIONS: General/Open Field=50/20/30. vs Heavy Cav=60/20/20. Garrison=70/30/0(no archers,archers bad at defense). City Def=60/20/20. Bear Hunt=10/10/80(max archers). Counter archer-heavy=30/50/20. Castle Atk=50/20/30. Castle Def=60/20/20.`;
+
+async function analyze(){
+  const btn=document.getElementById('btnAnalyze');
+  const resp=document.getElementById('aiResponse');
+  const troops=rows.map(r=>({type:r.type,name:r.name,count:parseInt(r.count)||0})).filter(r=>r.count>0);
+  const capacity=parseInt(document.getElementById('capacity').value)||0;
+  const scenario=document.getElementById('scenario').value;
+  const hero1=document.getElementById('hero1').value;
+  const hero2=document.getElementById('hero2').value;
+  const hero3=document.getElementById('hero3').value;
+  const heroes=[hero1,hero2,hero3].filter(h=>h).join(', ')||'None selected';
+  if(!getKey()){resp.className='ai-response show ai-error';resp.textContent='No API key set. Click ⚙️ API Key Settings above to enter your OpenRouter key (free at openrouter.ai/keys).';return;}
+  if(troops.length===0){resp.className='ai-response show ai-error';resp.textContent='Enter at least one troop count first.';return;}
+  btn.disabled=true;resp.className='ai-response show';resp.innerHTML='<div class="ai-loading">🧠 Analyzing your formation...</div>';
+  const typeOrder=['infantry','cavalry','archer'];
+  const labels={infantry:'Infantry',cavalry:'Cavalry',archer:'Archers'};
+  const sorted=troops.sort((a,b)=>typeOrder.indexOf(a.type)-typeOrder.indexOf(b.type));
+  const troopLines=sorted.map(t=>`- ${labels[t.type]||t.type}: ${t.name} x${t.count.toLocaleString()}`).join('\n');
+  const total=troops.reduce((s,t)=>s+t.count,0);
+  const prompt=`You are a Kingshot mobile game strategy expert. A player needs a troop formation recommendation.
+
+GAME: Kingshot by Century Games
+SCENARIO: ${scenario}
+MARCH CAPACITY: ${capacity.toLocaleString()}
+TOTAL TROOPS: ${total.toLocaleString()}
+HEROES: ${heroes}
+
+TROOPS:
+${troopLines}
+
+${HERO_DATA}
+
+Analyze and provide:
+1. Can they build the ideal ratio for this scenario? If not, what are they short on?
+2. Exactly how many of each type to send (Infantry, Cavalry, Archers).
+3. If they can't hit the ideal ratio, best alternative split using what they have.
+4. Which troop tiers to prioritize (higher tier = stronger).
+5. Surplus troops that should stay home.
+6. Factor in hero skills and synergies.
+
+Format:
+- MARCH SETUP: [total] troops
+- INFANTRY: send [X] (have [Y])
+- CAVALRY: send [X] (have [Y])
+- ARCHERS: send [X] (have [Y])
+- HERO: [advice]
+- NOTES: [key advice]
+
+Numbers with commas. Plain text, no markdown code blocks.`;
+  for(const model of MODELS){
+    try{
+      const res=await fetch(OR_URL,{
+        method:'POST',
+        headers:{'Authorization':`Bearer ${getKey()}`,'Content-Type':'application/json','HTTP-Referer':'https://blueyes772.github.io','X-Title':'KingShot Formation Calculator'},
+        body:JSON.stringify({model,messages:[{role:'user',content:prompt}],temperature:0.3,max_tokens:800})
+      });
+      const data=await res.json();
+      const text=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
+      if(text){
+        resp.className='ai-response show';
+        resp.textContent=text;
+        const tag=document.createElement('div');
+        tag.className='ai-model';
+        tag.textContent='Model: '+model;
+        resp.appendChild(tag);
+        btn.disabled=false;
+        return;
+      }
+    }catch(e){/* try next model */}
+  }
+  resp.className='ai-response show ai-error';
+  resp.textContent='All models failed. Try again in a minute.';
+  btn.disabled=false;
+}
+
+addRow('infantry','Level VI Infantry',13512);
+addRow('infantry','Level V Infantry',15781);
+addRow('cavalry','Level V Cavalry',9000);
+addRow('archer','Level VI Archer',18000);
+calculate();
+</script>
+</body>
+</html>
